@@ -1,0 +1,98 @@
+---
+title: "20382424 coursework"
+output: html_document
+---
+
+This is a R markdown file for the statistical analysis oj Vunder drug trial.
+First we read the datasets provided to use using read.csv().
+```{r}
+data <- read.csv("Cwk_data_20382424.csv") # Import data
+rectime<-read.csv("Cwk_rectime_20382424.csv") #Import data
+```
+
+**Task 1**
+Let µ denote the mean effect of Vunder. Calculate the sample size required to reject the null hypothesis H0 : µ = 122 in favour of the alternative hypothesis H1 : µ = 113 with significance level 5% and power 85%.
+```{r}
+mu<-9 # Calculate mu by subtracting alternative hypothesis from the null hypothesis.
+sigma<-24 # 24 hours is the standard deviation for recovery time of Xanadu.
+alpha<-0.05 #significance level of 5%.
+power<-0.85 #power is given as 85%.
+sample_size<-((qnorm(1-alpha)-qnorm(1-power))*sigma/mu)^2 # calculate the sample size 
+
+```
+
+**Task 2**
+Construct a 99% confidence interval for µ. Describe how the confidence interval is constructed.
+In this task, we use the 'rectime' data which consist of the recovery time of patients in hospital Atesta drug trial.
+```{r}
+n=80 #80 is the given sample size.
+
+t.test(rectime,mu=122, conf.level = 0.99) # t-test to find the 99% confidence interval.
+
+```
+**Task 3**
+Create a covariate bmi. The bmi of a patient is given by (weight in kg)/(height in m)^2.
+There are four main categories of bmi underweight (< 18.5), healthy (18.5 − 25), overweight (25 − 30) and obese (> 30). Is the bmi category of a patient receiving Vunder independent of hospital?
+```{r}
+
+data$bmi<-(data$weight/(data$height/100)^2) #calculate BMI and store it into a variable
+hist(data$bmi,xlab="BMI",main="Histogram for BMI",freq=FALSE) # create histogram for BMI.
+
+
+# BMI is continuous variable,we convert it the values to discrete by forming groups.
+#Map underweight,healthy,overweight,obese as 0,1,2,3 respectively and store it in a new variable. 
+
+data$bmicategory=cut((data$weight/(data$height/100)^2), br=c(0,18.5,25,30,Inf),labels=c(0,1,2,3)) 
+
+test<-table(data$bmicategory,data$hospital) #create contingency table
+test #print the table
+
+qchisq(1-0.05,df=9)#calculate chi-square distribution.
+chisq.test(test) #performed chisq test
+```
+
+**Task 4**
+Find the most appropriate linear regression model for predicting the recovery time after
+surgery, y, in terms of the covariates provided, including bmi.
+Hint: Check that categorical variables are correctly coded in your data.
+
+```{r}
+
+data$bmicategory=as.numeric(levels(data$bmicategory))[data$bmicategory] #convert 'bmicategory' covariate into numeric.
+
+model=lm(Recovery.time~.,data = data) #create a model
+summary(model) #summary statistics of the model
+
+```
+```{r}
+bestmodel=step(model) #step function for calculating the AIC values
+
+summary(bestmodel)#summary statistics for bestmodel
+```
+Use your model to predict the recovery time of a 41 year old female who does not smoke in hospital 4 given that their height is 155 cm and their weight is 67.7 kg.
+
+```{r}
+age=41
+sex=0
+weight=67.7
+height=155
+smoker=0
+hospital=4
+bmi=weight/(height)^2
+test_data=data.frame(age,sex,weight,height,smoker,hospital,bmi)
+y_pred=predict(bestmodel,test_data)
+y_pred
+```
+
+```{r}
+#Histogram for residuals to check for normal distribution
+hist(bestmodel$residuals,xlab="Residuals",main="Histogram for residuals",freq=FALSE)
+curve(dnorm(x,0,sd(bestmodel$residuals)),-30,30,col=2,add=TRUE) 
+```
+
+```{r}
+#Scatter plot for fitted vales vs Residual
+bestmodel$fitted.values
+plot(bestmodel$fitted.values,bestmodel$residuals,xlab="Fitted values",ylab="Residuals", main="Plot for Fitted values vs Residuals")
+abline(h=0,lty=2)
+```
